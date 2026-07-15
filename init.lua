@@ -29,10 +29,11 @@ minetest.register_entity("sfstreets:car", {
     initial_properties = {
         physical = true,
         collide_with_objects = true,
-        collisionbox = {-1.0, 0, -1.0, 1.0, 2.0, 1.0},
+        collisionbox = {-1.5, 0.0, -2.5, 1.5, 2.3, 2.5},
         visual = "mesh",
         mesh = "sedan.glb",
         textures = {"colormap.png"},
+        visual_size = {x=2, y=2, z=2},
         stepheight = 1.1,
     },
 
@@ -45,22 +46,29 @@ minetest.register_entity("sfstreets:car", {
             self.model = model
 
             local dirs = {0, math.pi/2, math.pi, 3*math.pi/2}
-            self.object:set_yaw(dirs[math.random(4)])
+            self.move_yaw = dirs[math.random(4)]
+            self.object:set_yaw(self.move_yaw + math.pi)
         else
             local data = minetest.deserialize(staticdata)
             if data and data.model then
                 self.model = data.model
                 self.object:set_properties({mesh = self.model})
+                self.move_yaw = data.move_yaw or 0
+                self.object:set_yaw(self.move_yaw + math.pi)
             else
                 self.model = "sedan.glb"
+                self.move_yaw = 0
+                self.object:set_yaw(math.pi)
             end
         end
         self.object:set_armor_groups({immortal = 1})
+        self.object:set_acceleration({x=0, y=-9.81, z=0})
     end,
 
     get_staticdata = function(self)
         return minetest.serialize({
-            model = self.model
+            model = self.model,
+            move_yaw = self.move_yaw
         })
     end,
 
@@ -102,7 +110,7 @@ minetest.register_entity("sfstreets:car", {
             end
         end
 
-        local yaw = self.object:get_yaw()
+        local yaw = self.move_yaw or (self.object:get_yaw() - math.pi)
         local dir = minetest.yaw_to_dir(yaw)
         if math.abs(dir.x) > math.abs(dir.z) then
             dir.x = dir.x > 0 and 1 or -1
@@ -112,7 +120,8 @@ minetest.register_entity("sfstreets:car", {
             dir.z = dir.z > 0 and 1 or -1
         end
 
-        self.object:set_yaw(minetest.dir_to_yaw(dir))
+        self.move_yaw = minetest.dir_to_yaw(dir)
+        self.object:set_yaw(self.move_yaw + math.pi)
         local speed = 4
         self.object:set_velocity({x = dir.x * speed, y = vel.y, z = dir.z * speed})
 
@@ -127,9 +136,10 @@ minetest.register_entity("sfstreets:car", {
                 local p = {x = next_pos.x, y = current_bpos.y + i, z = next_pos.z}
                 local node = minetest.get_node(p)
                 if node.name == "ignore" then
-                    local current_yaw = self.object:get_yaw()
+                    local current_yaw = self.move_yaw
                     local turn = (math.random(2) == 1) and (math.pi / 2) or (-math.pi / 2)
-                    self.object:set_yaw(current_yaw + turn)
+                    self.move_yaw = current_yaw + turn
+                    self.object:set_yaw(self.move_yaw + math.pi)
                     return
                 end
 
@@ -143,9 +153,10 @@ minetest.register_entity("sfstreets:car", {
             if next_ground_y then
                 local height_diff = next_ground_y - current_bpos.y
                 if height_diff > 1 then
-                    local current_yaw = self.object:get_yaw()
+                    local current_yaw = self.move_yaw
                     local turn = (math.random(2) == 1) and (math.pi / 2) or (-math.pi / 2)
-                    self.object:set_yaw(current_yaw + turn)
+                    self.move_yaw = current_yaw + turn
+                    self.object:set_yaw(self.move_yaw + math.pi)
                     self.object:set_velocity({x=0, y=vel.y, z=0})
                     self.last_bpos = nil
                 end
