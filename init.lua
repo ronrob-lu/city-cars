@@ -220,7 +220,19 @@ minetest.register_globalstep(function(dtime)
     end
 
     if spawn_y then
-        minetest.add_entity({x=spawn_x, y=spawn_y, z=spawn_z}, "sfstreets:car")
+        local spawn_pos = {x=spawn_x, y=spawn_y, z=spawn_z}
+
+        -- Check if the spawn position is within the player's line of sight
+        -- We check slightly above the ground (spawn_y + 1) and player's eye level (ppos.y + 1.5)
+        local head_pos = {x=ppos.x, y=ppos.y+1.5, z=ppos.z}
+        local car_vis_pos = {x=spawn_x, y=spawn_y+1, z=spawn_z}
+
+        local is_visible = minetest.line_of_sight(head_pos, car_vis_pos)
+
+        -- Alternatively, if they are really close, don't spawn them even if behind a wall
+        if not is_visible and dist > 20 then
+            minetest.add_entity(spawn_pos, "sfstreets:car")
+        end
     end
 end)
 
