@@ -34,7 +34,7 @@ minetest.register_entity("sfstreets:car", {
         mesh = "sedan.glb",
         textures = {"colormap.png"},
         visual_size = {x=15, y=15, z=15},
-        stepheight = 1.1,
+        stepheight = 0.6,
     },
 
     on_activate = function(self, staticdata)
