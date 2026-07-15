@@ -33,34 +33,29 @@ minetest.register_entity("sfstreets:car", {
         visual = "mesh",
         mesh = "sedan.glb",
         textures = {"colormap.png"},
-        visual_size = {x=2, y=2, z=2},
+        visual_size = {x=15, y=15, z=15},
         stepheight = 1.1,
     },
 
     on_activate = function(self, staticdata)
         active_cars = active_cars + 1
 
-        if staticdata == "" then
-            local model = car_models[math.random(#car_models)]
-            self.object:set_properties({mesh = model})
-            self.model = model
+        local data = nil
+        if staticdata ~= "" and staticdata ~= nil then
+            data = minetest.deserialize(staticdata)
+        end
 
+        if data and data.model then
+            self.model = data.model
+            self.move_yaw = data.move_yaw or 0
+        else
+            self.model = car_models[math.random(#car_models)]
             local dirs = {0, math.pi/2, math.pi, 3*math.pi/2}
             self.move_yaw = dirs[math.random(4)]
-            self.object:set_yaw(self.move_yaw + math.pi)
-        else
-            local data = minetest.deserialize(staticdata)
-            if data and data.model then
-                self.model = data.model
-                self.object:set_properties({mesh = self.model})
-                self.move_yaw = data.move_yaw or 0
-                self.object:set_yaw(self.move_yaw + math.pi)
-            else
-                self.model = "sedan.glb"
-                self.move_yaw = 0
-                self.object:set_yaw(math.pi)
-            end
         end
+
+        self.object:set_properties({mesh = self.model})
+        self.object:set_yaw(self.move_yaw + math.pi)
         self.object:set_armor_groups({immortal = 1})
         self.object:set_acceleration({x=0, y=-9.81, z=0})
     end,
@@ -123,6 +118,22 @@ minetest.register_entity("sfstreets:car", {
         self.move_yaw = minetest.dir_to_yaw(dir)
         self.object:set_yaw(self.move_yaw + math.pi)
         local speed = 4
+
+        -- Stuck detection logic
+        if math.abs(vel.x) < 0.1 and math.abs(vel.z) < 0.1 then
+            self.stuck_timer = (self.stuck_timer or 0) + dtime
+            if self.stuck_timer > 1.0 then
+                local current_yaw = self.move_yaw
+                local turn = (math.random(2) == 1) and (math.pi / 2) or (-math.pi / 2)
+                self.move_yaw = current_yaw + turn
+                self.object:set_yaw(self.move_yaw + math.pi)
+                self.stuck_timer = 0
+                self.last_bpos = nil
+            end
+        else
+            self.stuck_timer = 0
+        end
+
         self.object:set_velocity({x = dir.x * speed, y = vel.y, z = dir.z * speed})
 
         local current_bpos = vector.round(pos)
@@ -178,7 +189,8 @@ minetest.register_globalstep(function(dtime)
     local players = minetest.get_connected_players()
     if #players == 0 then return end
 
-    if active_cars >= 100 then return end
+    local max_cars = tonumber(minetest.settings:get("sfstreets_max_cars")) or 100
+    if active_cars >= max_cars then return end
 
     local player = players[math.random(#players)]
     local ppos = player:get_pos()
@@ -211,3 +223,18 @@ minetest.register_globalstep(function(dtime)
         minetest.add_entity({x=spawn_x, y=spawn_y, z=spawn_z}, "sfstreets:car")
     end
 end)
+
+minetest.register_chatcommand("clear_all_cars", {
+    description = "Removes all sfstreets:car entities from the loaded map",
+    privs = {server = true},
+    func = function(name, param)
+        local count = 0
+        for _, entity in pairs(minetest.luaentities) do
+            if entity.name == "sfstreets:car" then
+                entity.object:remove()
+                count = count + 1
+            end
+        end
+        return true, "Removed " .. count .. " cars."
+    end,
+})
