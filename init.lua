@@ -1,6 +1,5 @@
 local car_models = {
     "ambulance.glb",
-    "box.glb",
     "delivery-flat.glb",
     "delivery.glb",
     "firetruck.glb",
@@ -19,8 +18,7 @@ local car_models = {
     "tractor.glb",
     "truck-flat.glb",
     "truck.glb",
-    "van.glb",
-    "wheel-truck.glb"
+    "van.glb"
 }
 
 local active_cars = 0
@@ -117,18 +115,35 @@ minetest.register_entity("sfstreets:car", {
 
         self.move_yaw = minetest.dir_to_yaw(dir)
         self.object:set_yaw(self.move_yaw + math.pi)
-        local speed = 4
 
-        -- Stuck detection logic
-        if math.abs(vel.x) < 0.1 and math.abs(vel.z) < 0.1 then
+        -- Check for entities in front to stop and avoid glitching
+        local front_pos = vector.add(pos, vector.multiply(dir, 3))
+        local objs = minetest.get_objects_inside_radius(front_pos, 3)
+        local blocked_by_entity = false
+        for _, obj in ipairs(objs) do
+            if obj ~= self.object then
+                if obj:is_player() or (obj:get_luaentity() and obj:get_properties().collide_with_objects) then
+                    blocked_by_entity = true
+                    break
+                end
+            end
+        end
+
+        local speed = 4
+        if blocked_by_entity then
+            speed = 0
+        end
+
+        -- Stuck detection logic (for walls/terrain)
+        if speed > 0 and math.abs(vel.x) < 0.1 and math.abs(vel.z) < 0.1 then
             self.stuck_timer = (self.stuck_timer or 0) + dtime
             if self.stuck_timer > 1.0 then
                 local current_yaw = self.move_yaw
                 local turn = (math.random(2) == 1) and (math.pi / 2) or (-math.pi / 2)
                 self.move_yaw = current_yaw + turn
                 self.object:set_yaw(self.move_yaw + math.pi)
-                self.stuck_timer = 0
                 self.last_bpos = nil
+                self.stuck_timer = 0
             end
         else
             self.stuck_timer = 0
