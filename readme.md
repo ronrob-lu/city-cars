@@ -9,4 +9,4 @@ A Luanti Mod that spawns non-controllable NPC cars in the world.
 * Lightweight simulation with a configurable limit of max cars.
 
 ## License
-MIT License. Created by ronrob-lu9. See `license.md` for details.
+MIT License. Created by ronrob-lu. See `license.md` for details.
