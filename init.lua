@@ -54,7 +54,7 @@ minetest.register_entity("sfstreets:car", {
 
         self.object:set_properties({mesh = self.model})
         self.object:set_yaw(self.move_yaw + math.pi)
-        self.object:set_armor_groups({immortal = 1})
+        self.object:set_armor_groups({fleshy = 100})
         self.object:set_acceleration({x=0, y=-9.81, z=0})
     end,
 
