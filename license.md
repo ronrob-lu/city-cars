@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 ronrob-lu9
+Copyright (c) 2026 ronrob-lu
 
 The 3D models and textures are created by www.kenney.nl and are licensed under CC0.
 
